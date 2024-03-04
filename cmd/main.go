@@ -28,7 +28,7 @@ type (
 )
 type model struct {
 	textInput        textinput.Model
-	sencondTextInput textinput.Model
+	secondTextInput textinput.Model
 	dbInput          textinput.Model
 	dataTable        table.Model
 	err              error
@@ -83,7 +83,7 @@ func initialModel() model {
 
 	return model{
 		textInput:        ti,
-		sencondTextInput: sti,
+		secondTextInput: sti,
 		dbInput:          dbi,
 		err:              nil,
 		num:              0,
@@ -179,12 +179,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.num == 1 {
-		m.sencondTextInput, cmd = m.sencondTextInput.Update(msg)
+		m.secondTextInput, cmd = m.secondTextInput.Update(msg)
 	} else if m.num == 0 {
 		m.textInput, cmd = m.textInput.Update(msg)
 	} else if m.num == 2 && m.db == nil {
 		var err error
-		m.db, err = conntectDB(m.sencondTextInput.Value())
+		m.db, err = conntectDB(m.secondTextInput.Value())
 
 		if err != nil {
 			m.selectData = err.Error()
@@ -207,7 +207,7 @@ func (m model) View() string {
 	var view string
 
 	if m.num > 0 {
-		view = m.sencondTextInput.View()
+		view = m.secondTextInput.View()
 	} else {
 		view = m.textInput.View()
 	}
