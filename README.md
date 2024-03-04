@@ -23,3 +23,15 @@ DBTerm is a terminal-based user interface (TUI) for interacting with relational 
 ```bash
 go get -u github.com/kevinliao852/dbterm
 ```
+
+### Build
+
+```
+make build
+```
+
+### Clean Up
+
+```
+make clean
+```

@@ -3,6 +3,8 @@
 *.dll
 *.so
 *.dylib
+dbterm
+
 
 # Go generated files
 *.pb.go
