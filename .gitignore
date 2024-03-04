@@ -1,0 +1,45 @@
+# Compiled Go binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go generated files
+*.pb.go
+*.test.go
+
+# Binaries for programs and plugins
+/bin/
+/release/
+
+# Dependency directories
+/vendor/
+
+# Build artifacts
+/_obj/
+/_test/
+/main
+
+# Temporary files
+*.tmp
+*.log
+*.out
+
+# Ignore database configuration files
+/dbconfig.toml
+
+# Ignore any files specific to your development environment
+/.vscode/
+/.idea/
+*.sublime-*
+
+# Ignore binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Ignore project-specific files
+/config.yaml
+/.env
+
