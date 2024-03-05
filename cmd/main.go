@@ -135,9 +135,6 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -149,64 +146,60 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			log.Println("Enter pressed")
 			m.num++
-			if m.db != nil {
 
-				// check if the db is connected
-				if m.db.Ping() != nil {
-					m.selectData = "DB is not connected"
-				}
-
-				m.selectData = ""
-				m.tableColumn = []table.Column{}
-				m.tableRow = []table.Row{}
-				m.dataTable.SetRows(m.tableRow)
-				m.dataTable.SetColumns(m.tableColumn)
-
-				rows, err := m.db.Query(m.dbInput.Value())
-				if err != nil {
-
-					m.selectData = err.Error()
-				} else {
-					types, _ := rows.ColumnTypes()
-					for rows.Next() {
-						row := make([]interface{}, len(types))
-
-						// SELECT * FROM table
-						for i := range types {
-							row[i] = new(interface{})
-						}
-						rows.Scan(row...)
-
-						if err != nil {
-							log.Fatal(err)
-						}
-
-						tableColumns := []table.Column{}
-
-						for _, col := range types {
-							width := len(col.Name())
-							tableColumns = append(tableColumns, table.Column{
-								Title: col.Name(),
-								Width: width,
-							})
-						}
-						m.tableColumn = tableColumns
-
-						var tableRow table.Row
-
-						for _, fields := range row {
-							pField := fields.(*interface{})
-							strField := fmt.Sprintf("%s", *pField)
-							tableRow = append(tableRow, strField)
-						}
-
-						m.tableRow = append(m.tableRow, tableRow)
-
-					}
-				}
-
+			if m.db == nil {
+				break
 			}
 
+			// check if the db is connected
+			if m.db.Ping() != nil {
+				m.selectData = "DB is not connected"
+			}
+
+			m.selectData = ""
+			m.tableColumn = []table.Column{}
+			m.tableRow = []table.Row{}
+			m.dataTable.SetRows(m.tableRow)
+			m.dataTable.SetColumns(m.tableColumn)
+
+			rows, err := m.db.Query(m.dbInput.Value())
+			if err != nil {
+				m.selectData = err.Error()
+				break
+			}
+			types, _ := rows.ColumnTypes()
+			for rows.Next() {
+				row := make([]interface{}, len(types))
+
+				// SELECT * FROM table
+				for i := range types {
+					row[i] = new(interface{})
+				}
+				if err := rows.Scan(row...); err != nil {
+					log.Fatal(err)
+				}
+
+				tableColumns := []table.Column{}
+
+				for _, col := range types {
+					width := len(col.Name())
+					tableColumns = append(tableColumns, table.Column{
+						Title: col.Name(),
+						Width: width,
+					})
+				}
+				m.tableColumn = tableColumns
+
+				var tableRow table.Row
+
+				for _, fields := range row {
+					pField := fields.(*interface{})
+					strField := fmt.Sprintf("%s", *pField)
+					tableRow = append(tableRow, strField)
+				}
+
+				m.tableRow = append(m.tableRow, tableRow)
+			}
 		}
 
 	// We handle errors just like any other message
@@ -215,24 +208,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.num == 1 {
-		m.secondTextInput, cmd = m.secondTextInput.Update(msg)
-	} else if m.num == 0 {
+	var cmd tea.Cmd
+
+	switch m.num {
+	case 0:
 		m.textInput, cmd = m.textInput.Update(msg)
-	} else if m.num == 2 && m.db == nil {
+	case 1:
+		m.secondTextInput, cmd = m.secondTextInput.Update(msg)
+	case 2:
+		if m.db != nil {
+			break
+		}
+
 		var err error
 		m.db, err = conntectDB(m.secondTextInput.Value())
 
 		if err != nil {
 			m.selectData = err.Error()
 			m.num--
-		} else {
-			m.selectData = "DB is connected"
-			m.num++
-			m.err = nil
+			break
 		}
 
-	} else if m.num >= 3 {
+		m.selectData = "DB is connected"
+		m.num++
+		m.err = nil
+	default:
 		m.dbInput, cmd = m.dbInput.Update(msg)
 		m.dataTable.SetColumns(m.tableColumn)
 		m.dataTable.SetRows(m.tableRow)
