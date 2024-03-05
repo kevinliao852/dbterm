@@ -3,20 +3,57 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"io"
+	"os"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	_ "github.com/go-sql-driver/mysql"
+	log "github.com/sirupsen/logrus"
 )
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.ThickBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
+type LoggerOption struct {
+	log    *log.Logger
+	prefix string
+}
+
+// SetOutput (io.Writer)
+// SetPrefix (string)
+func (l *LoggerOption) SetOutput(w io.Writer) {
+	log.SetOutput(w)
+}
+
+func (l *LoggerOption) SetPrefix(s string) {
+	l.prefix = s
+}
+
 func main() {
+
+	if len(os.Getenv("DEBUG")) > 0 {
+		log := log.New()
+
+		lo := &LoggerOption{
+			log: log,
+		}
+
+		f, err := tea.LogToFileWith("debug.log", "DEBUG", lo)
+
+		if err != nil {
+			fmt.Println("fatal:", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+	} else {
+		fmt.Println("need to export DEBUG=true")
+		os.Exit(1)
+	}
+
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -27,16 +64,16 @@ type (
 	errMsg error
 )
 type model struct {
-	textInput        textinput.Model
+	textInput       textinput.Model
 	secondTextInput textinput.Model
-	dbInput          textinput.Model
-	dataTable        table.Model
-	err              error
-	num              int
-	db               *sql.DB
-	selectData       string
-	tableRow         []table.Row
-	tableColumn      []table.Column
+	dbInput         textinput.Model
+	dataTable       table.Model
+	err             error
+	num             int
+	db              *sql.DB
+	selectData      string
+	tableRow        []table.Row
+	tableColumn     []table.Column
 }
 
 func initialModel() model {
@@ -82,14 +119,14 @@ func initialModel() model {
 	t.SetWidth(1000)
 
 	return model{
-		textInput:        ti,
+		textInput:       ti,
 		secondTextInput: sti,
-		dbInput:          dbi,
-		err:              nil,
-		num:              0,
-		dataTable:        t,
-		tableRow:         tr,
-		tableColumn:      tc,
+		dbInput:         dbi,
+		err:             nil,
+		num:             0,
+		dataTable:       t,
+		tableRow:        tr,
+		tableColumn:     tc,
 	}
 }
 
@@ -110,8 +147,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fmt.Println("ctrl a")
 
 		case tea.KeyEnter:
+			log.Println("Enter pressed")
 			m.num++
-
 			if m.db != nil {
 
 				// check if the db is connected
@@ -231,6 +268,7 @@ func (m model) View() string {
 }
 
 func conntectDB(dbURI string) (*sql.DB, error) {
+	log.Println("Connecting to the database...")
 
 	// Open a connection to the MySQL database
 	db, err := sql.Open("mysql", dbURI)
