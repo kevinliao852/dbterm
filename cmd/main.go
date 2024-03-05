@@ -49,6 +49,9 @@ func main() {
 			os.Exit(1)
 		}
 		defer f.Close()
+	} else {
+		fmt.Println("need to export DEBUG=true")
+		os.Exit(1)
 	}
 
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
