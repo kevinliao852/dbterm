@@ -49,9 +49,8 @@ func main() {
 			os.Exit(1)
 		}
 		defer f.Close()
-	} else {
-		os.Exit(1)
 	}
+
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
