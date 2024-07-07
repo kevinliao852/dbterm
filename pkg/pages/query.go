@@ -44,7 +44,10 @@ func (q *QueryPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			log.Println("Enter pressed")
 
-			if q.DB != nil {
+			log.Println("DB:", q.DB, &q.DB)
+
+			if q.DB == nil {
+				log.Println("here")
 				break
 			}
 
@@ -53,14 +56,14 @@ func (q *QueryPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 
-			// if q.DB.Ping() != nil {
-			// 	q.selectData = "DB is not connected"
-			// 	break
-			// }
+			if q.DB.Ping() != nil {
+				q.selectData = "DB is not connected"
+				break
+			}
 
 			q.queryStr = q.DbInput.Value()
 			q.selectData = "Querying the database"
-			// q.readAndQuery()
+			q.readAndQuery()
 
 		}
 	}
@@ -113,11 +116,13 @@ func (q *QueryPage) readAndQuery() {
 
 	for rows.Next() {
 
-		row := make([]interface{}, len(types))
+		row := make([]interface{}, 0)
 
-		for i := range types {
-			row[i] = new(interface{})
+		for range types {
+			row = append(row, new(interface{}))
 		}
+
+		log.Println("debug", types, len(types), row)
 
 		err := rows.Scan(row...)
 
@@ -135,9 +140,18 @@ func (q *QueryPage) readAndQuery() {
 			tableRow = append(tableRow, strField)
 		}
 
+		log.Println(tableRow)
+
 		tableRowList = append(tableRowList, tableRow)
 	}
 
-	q.DataTable.SetRows(tableRowList)
+	log.Println(tableColumn)
+	log.Println(tableRowList)
+
+	// make sure to set culumn first!
 	q.DataTable.SetColumns(tableColumn)
+
+	if len(tableColumn) > 0 {
+		q.DataTable.SetRows(tableRowList)
+	}
 }
