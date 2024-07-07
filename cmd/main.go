@@ -64,7 +64,7 @@ type model struct {
 	num             int
 	tableRow        []table.Row
 	tableColumn     []table.Column
-	conntectionPage pages.ConntectionPage
+	connectionPage pages.ConnectionPage
 	queryPage       pages.QueryPage
 	currentModel    tea.Model
 }
@@ -88,7 +88,7 @@ func initialModel() model {
 	dbi.CharLimit = 156
 	dbi.Width = 40
 
-	connectionPage := pages.ConntectionPage{
+	connectionPage := pages.ConnectionPage{
 		TextInput:       ti,
 		SecondTextInput: sti,
 	}
@@ -130,7 +130,7 @@ func initialModel() model {
 		dataTable:       t,
 		tableRow:        tr,
 		tableColumn:     tc,
-		conntectionPage: connectionPage,
+		connectionPage: connectionPage,
 		queryPage:       queryPage,
 	}
 }
@@ -150,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.To {
 
 		case pages.ConnectionPageType:
-			m.currentModel, cmd = m.conntectionPage.Update(msg)
+			m.currentModel, cmd = m.connectionPage.Update(msg)
 
 		case pages.QueryPageType:
 			log.Println(msg, "options")
@@ -165,7 +165,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	default:
 		if m.currentModel == nil {
-			m.currentModel = m.conntectionPage
+			m.currentModel = m.connectionPage
 		}
 
 		if _, ok := msg.(pages.Navigator); !ok {

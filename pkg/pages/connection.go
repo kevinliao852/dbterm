@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ConntectionPage struct {
+type ConnectionPage struct {
 	TextInput       textinput.Model
 	SecondTextInput textinput.Model
 	errorStr        string
@@ -17,17 +17,17 @@ type ConntectionPage struct {
 	isConnected     bool
 }
 
-var _ Pager = &ConntectionPage{}
+var _ Pager = &ConnectionPage{}
 
-var _ tea.Model = &ConntectionPage{}
+var _ tea.Model = &ConnectionPage{}
 
-func (q ConntectionPage) Init() tea.Cmd {
+func (q ConnectionPage) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (q ConntectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
-	log.Println("ConntectionPage Update")
+	log.Println("ConnectionPage Update")
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -49,7 +49,7 @@ func (q ConntectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if driverType != "" && dbUri != "" {
 					// connect to the database
 					var err error
-					q.db, err = conntectDB(q.SecondTextInput.Value())
+					q.db, err = connectDB(q.SecondTextInput.Value())
 
 					if err != nil {
 						q.errorStr = "\nError connecting to the database\n" + err.Error() + "\n"
@@ -87,7 +87,7 @@ func (q ConntectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return q, cmd
 }
 
-func (q ConntectionPage) View() string {
+func (q ConnectionPage) View() string {
 	if q.driverType == "" {
 		q.TextInput.Placeholder = "Enter the driver type (mysql, postgres)"
 		q.TextInput.Focus()
@@ -101,11 +101,11 @@ func (q ConntectionPage) View() string {
 
 }
 
-func (q ConntectionPage) getPageName() string {
-	return "conntectionPage"
+func (q ConnectionPage) getPageName() string {
+	return "connectionPage"
 }
 
-func (q ConntectionPage) isValidDriverType(s string) bool {
+func (q ConnectionPage) isValidDriverType(s string) bool {
 	if s == "mysql" || s == "postgres" {
 		return true
 	}
@@ -113,7 +113,7 @@ func (q ConntectionPage) isValidDriverType(s string) bool {
 	return false
 }
 
-func conntectDB(dbURI string) (*sql.DB, error) {
+func connectDB(dbURI string) (*sql.DB, error) {
 	log.Println("Connecting to the database...")
 
 	// Open a connection to the MySQL database
