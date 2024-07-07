@@ -149,10 +149,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.To {
 
-		case "connectionPage":
+		case pages.ConnectionPageType:
 			m.currentModel, cmd = m.conntectionPage.Update(msg)
 
-		case "queryPage":
+		case pages.QueryPageType:
 			log.Println(msg, "options")
 			if msg.Options != nil {
 				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {

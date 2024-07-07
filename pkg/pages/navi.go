@@ -3,7 +3,7 @@ package pages
 import tea "github.com/charmbracelet/bubbletea"
 
 type Navigator struct {
-	To      string
+	To      int
 	Options *map[string]interface{}
 }
 
