@@ -62,7 +62,6 @@ type model struct {
 	dataTable       table.Model
 	err             error
 	num             int
-	db              *sql.DB
 	tableRow        []table.Row
 	tableColumn     []table.Column
 	conntectionPage pages.ConntectionPage
@@ -117,12 +116,9 @@ func initialModel() model {
 	t.SetStyles(s)
 	t.SetWidth(1000)
 
-	var db *sql.DB
-
 	queryPage := pages.QueryPage{
 		DbInput:   dbi,
 		DataTable: t,
-		DB:        db,
 	}
 
 	return model{
@@ -146,6 +142,7 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case pages.Navigator:
 		log.Println("msg.To", msg.To)
@@ -159,24 +156,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println(msg, "options")
 			if msg.Options != nil {
 				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {
-					m.db = db
+					m.queryPage.DB = db
 				}
 			}
 
 			m.currentModel, cmd = m.queryPage.Update(msg)
 		}
+
+	default:
+		if m.currentModel == nil {
+			m.currentModel = m.conntectionPage
+		}
+
+		if _, ok := msg.(pages.Navigator); !ok {
+			m.currentModel, cmd = m.currentModel.Update(msg)
+		}
 	}
-
-	log.Println("cmd", cmd)
-
-	if m.currentModel == nil {
-		m.currentModel = m.conntectionPage
-	}
-
-	m.currentModel, cmd = m.currentModel.Update(msg)
 
 	return m, cmd
-
 }
 
 func (m model) View() string {
