@@ -55,9 +55,6 @@ func main() {
 	}
 }
 
-type (
-	errMsg error
-)
 type model struct {
 	textInput       textinput.Model
 	secondTextInput textinput.Model
@@ -66,7 +63,6 @@ type model struct {
 	err             error
 	num             int
 	db              *sql.DB
-	selectData      string
 	tableRow        []table.Row
 	tableColumn     []table.Column
 	conntectionPage pages.ConntectionPage
@@ -181,105 +177,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
-		case tea.KeyCtrlA:
-			fmt.Println("ctrl a")
-
-		case tea.KeyEnter:
-			log.Println("Enter pressed")
-			m.num++
-			if m.db != nil {
-
-				// check if the db is connected
-				if m.db.Ping() != nil {
-					m.selectData = "DB is not connected"
-				}
-
-				m.selectData = ""
-				m.tableColumn = []table.Column{}
-				m.tableRow = []table.Row{}
-				m.dataTable.SetRows(m.tableRow)
-				m.dataTable.SetColumns(m.tableColumn)
-
-				rows, err := m.db.Query(m.dbInput.Value())
-				if err != nil {
-
-					m.selectData = err.Error()
-				} else {
-					types, _ := rows.ColumnTypes()
-					for rows.Next() {
-						row := make([]interface{}, len(types))
-
-						// SELECT * FROM table
-						for i := range types {
-							row[i] = new(interface{})
-						}
-						rows.Scan(row...)
-
-						if err != nil {
-							log.Fatal(err)
-						}
-
-						tableColumns := []table.Column{}
-
-						for _, col := range types {
-							width := len(col.Name())
-							tableColumns = append(tableColumns, table.Column{
-								Title: col.Name(),
-								Width: width,
-							})
-						}
-						m.tableColumn = tableColumns
-
-						var tableRow table.Row
-
-						for _, fields := range row {
-							pField := fields.(*interface{})
-							strField := fmt.Sprintf("%s", *pField)
-							tableRow = append(tableRow, strField)
-						}
-
-						m.tableRow = append(m.tableRow, tableRow)
-
-					}
-				}
-
-			}
-
-		}
-
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
-	}
-
-	if m.num == 1 {
-		m.secondTextInput, cmd = m.secondTextInput.Update(msg)
-	} else if m.num == 0 {
-		m.textInput, cmd = m.textInput.Update(msg)
-	} else if m.num == 2 && m.db == nil {
-		var err error
-
-		if err != nil {
-			m.selectData = err.Error()
-			m.num--
-		} else {
-			m.selectData = "DB is connected"
-			m.num++
-			m.err = nil
-		}
-
-	} else if m.num >= 3 {
-		m.dbInput, cmd = m.dbInput.Update(msg)
-		m.dataTable.SetColumns(m.tableColumn)
-		m.dataTable.SetRows(m.tableRow)
-	}
-	return m, cmd
 }
 
 func (m model) View() string {

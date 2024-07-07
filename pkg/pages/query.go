@@ -17,7 +17,6 @@ type QueryPage struct {
 	selectData string
 	DB         *sql.DB
 	queryStr   string
-	selectedDB string
 }
 
 var baseStyle = lipgloss.NewStyle().
