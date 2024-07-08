@@ -11,20 +11,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/kevinliao852/dbterm/pkg/pages"
 	log "github.com/sirupsen/logrus"
 )
-
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.ThickBorder()).
-	BorderForeground(lipgloss.Color("240"))
 
 type LoggerOption struct {
 	log    *log.Logger
 	prefix string
 }
 
-// SetOutput (io.Writer)
-// SetPrefix (string)
 func (l *LoggerOption) SetOutput(w io.Writer) {
 	log.SetOutput(w)
 }
@@ -60,9 +55,6 @@ func main() {
 	}
 }
 
-type (
-	errMsg error
-)
 type model struct {
 	textInput       textinput.Model
 	secondTextInput textinput.Model
@@ -70,10 +62,11 @@ type model struct {
 	dataTable       table.Model
 	err             error
 	num             int
-	db              *sql.DB
-	selectData      string
 	tableRow        []table.Row
 	tableColumn     []table.Column
+	connectionPage pages.ConnectionPage
+	queryPage       pages.QueryPage
+	currentModel    tea.Model
 }
 
 func initialModel() model {
@@ -94,6 +87,11 @@ func initialModel() model {
 	dbi.Focus()
 	dbi.CharLimit = 156
 	dbi.Width = 40
+
+	connectionPage := pages.ConnectionPage{
+		TextInput:       ti,
+		SecondTextInput: sti,
+	}
 
 	var tr []table.Row = []table.Row{}
 	var tc []table.Column = []table.Column{}
@@ -118,6 +116,11 @@ func initialModel() model {
 	t.SetStyles(s)
 	t.SetWidth(1000)
 
+	queryPage := pages.QueryPage{
+		DbInput:   dbi,
+		DataTable: t,
+	}
+
 	return model{
 		textInput:       ti,
 		secondTextInput: sti,
@@ -127,6 +130,8 @@ func initialModel() model {
 		dataTable:       t,
 		tableRow:        tr,
 		tableColumn:     tc,
+		connectionPage: connectionPage,
+		queryPage:       queryPage,
 	}
 }
 
@@ -135,152 +140,50 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
-		case tea.KeyCtrlA:
-			fmt.Println("ctrl a")
-
-		case tea.KeyEnter:
-			log.Println("Enter pressed")
-			m.num++
-
-			if m.db == nil {
-				break
-			}
-
-			// check if the db is connected
-			if m.db.Ping() != nil {
-				m.selectData = "DB is not connected"
-			}
-
-			m.selectData = ""
-			m.tableColumn = []table.Column{}
-			m.tableRow = []table.Row{}
-			m.dataTable.SetRows(m.tableRow)
-			m.dataTable.SetColumns(m.tableColumn)
-
-			rows, err := m.db.Query(m.dbInput.Value())
-			if err != nil {
-				m.selectData = err.Error()
-				break
-			}
-			types, _ := rows.ColumnTypes()
-			for rows.Next() {
-				row := make([]interface{}, len(types))
-
-				// SELECT * FROM table
-				for i := range types {
-					row[i] = new(interface{})
-				}
-				if err := rows.Scan(row...); err != nil {
-					log.Fatal(err)
-				}
-
-				tableColumns := []table.Column{}
-
-				for _, col := range types {
-					width := len(col.Name())
-					tableColumns = append(tableColumns, table.Column{
-						Title: col.Name(),
-						Width: width,
-					})
-				}
-				m.tableColumn = tableColumns
-
-				var tableRow table.Row
-
-				for _, fields := range row {
-					pField := fields.(*interface{})
-					strField := fmt.Sprintf("%s", *pField)
-					tableRow = append(tableRow, strField)
-				}
-
-				m.tableRow = append(m.tableRow, tableRow)
-			}
-		}
-
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
-	}
 
 	var cmd tea.Cmd
 
-	switch m.num {
-	case 0:
-		m.textInput, cmd = m.textInput.Update(msg)
-	case 1:
-		m.secondTextInput, cmd = m.secondTextInput.Update(msg)
-	case 2:
-		if m.db != nil {
-			break
+	switch msg := msg.(type) {
+	case pages.Navigator:
+		log.Println("msg.To", msg.To)
+
+		switch msg.To {
+
+		case pages.ConnectionPageType:
+			m.currentModel, cmd = m.connectionPage.Update(msg)
+
+		case pages.QueryPageType:
+			log.Println(msg, "options")
+			if msg.Options != nil {
+				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {
+					m.queryPage.DB = db
+				}
+			}
+
+			m.currentModel, cmd = m.queryPage.Update(msg)
 		}
 
-		var err error
-		m.db, err = conntectDB(m.secondTextInput.Value())
-
-		if err != nil {
-			m.selectData = err.Error()
-			m.num--
-			break
-		}
-
-		m.selectData = "DB is connected"
-		m.num++
-		m.err = nil
 	default:
-		m.dbInput, cmd = m.dbInput.Update(msg)
-		m.dataTable.SetColumns(m.tableColumn)
-		m.dataTable.SetRows(m.tableRow)
+		if m.currentModel == nil {
+			m.currentModel = m.connectionPage
+		}
+
+		if _, ok := msg.(pages.Navigator); !ok {
+			m.currentModel, cmd = m.currentModel.Update(msg)
+		}
 	}
+
 	return m, cmd
 }
 
 func (m model) View() string {
-	var view string
-
-	if m.num > 0 {
-		view = m.secondTextInput.View()
-	} else {
-		view = m.textInput.View()
-	}
-
-	if m.num >= 2 {
-		view = m.dbInput.View()
-
-		return fmt.Sprintf("Select the DB\n\n%s\n\n%s\n%s",
-			view,
-			m.selectData,
-			baseStyle.Render(m.dataTable.View()),
-		)
+	if m.currentModel == nil {
+		return ""
 	}
 
 	return fmt.Sprintf(
-		"Enter the intput\n\n%s\n\n%s\n\n%s",
-		view,
-		m.selectData,
+		"Enter the input:\n\n%s\n\n%s",
+		m.currentModel.View(),
 		"(esc to quit)",
 	)
-}
-
-func conntectDB(dbURI string) (*sql.DB, error) {
-	log.Println("Connecting to the database...")
-
-	// Open a connection to the MySQL database
-	db, err := sql.Open("mysql", dbURI)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if the connection to the database is successful
-	err = db.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	return db, err
 }

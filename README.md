@@ -30,6 +30,12 @@ go get -u github.com/kevinliao852/dbterm
 make build
 ```
 
+### URI Example
+
+```
+root:my-secret-pw@tcp(localhost:3306)/my_db
+```
+
 ### Clean Up
 
 ```
