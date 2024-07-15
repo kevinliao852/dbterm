@@ -148,9 +148,16 @@ func (q *QueryPage) readAndQuery() {
 	log.Println(tableRowList)
 
 	// make sure to set culumn first!
-	q.DataTable.SetColumns(tableColumn)
-
-	if len(tableColumn) > 0 {
-		q.DataTable.SetRows(tableRowList)
+	if len(tableColumn) == 0 {
+		var c []table.Column
+		c = append(c, table.Column{Title: "Message", Width: 16})
+		var r []table.Row
+		r = append(r, table.Row{"No Rows Returned"})
+		q.DataTable.SetColumns(c)
+		q.DataTable.SetRows(r)
+		return
 	}
+
+	q.DataTable.SetColumns(tableColumn)
+	q.DataTable.SetRows(tableRowList)
 }
