@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -88,16 +89,18 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (q ConnectionPage) View() string {
+	baseBorder := lipgloss.NewStyle().BorderStyle(lipgloss.ThickBorder())
+
 	if q.driverType == "" {
 		q.TextInput.Placeholder = "Enter the driver type (mysql, postgres)"
 		q.TextInput.Focus()
-		return q.TextInput.View() + q.errorStr
+		return baseBorder.Render(q.TextInput.View() + q.errorStr)
 	}
 
 	q.SecondTextInput.Placeholder = "Enter the database uri"
 	q.SecondTextInput.Focus()
 
-	return q.SecondTextInput.View() + q.errorStr
+	return baseBorder.Render(q.SecondTextInput.View() + q.errorStr)
 
 }
 

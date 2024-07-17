@@ -21,7 +21,7 @@ type QueryPage struct {
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.ThickBorder()).
-	BorderForeground(lipgloss.Color("240"))
+	BorderForeground(lipgloss.Color("240")).Width(120)
 
 var _ Pager = &QueryPage{}
 

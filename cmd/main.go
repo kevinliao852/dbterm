@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -64,17 +65,25 @@ type model struct {
 	num             int
 	tableRow        []table.Row
 	tableColumn     []table.Column
-	connectionPage pages.ConnectionPage
+	connectionPage  pages.ConnectionPage
 	queryPage       pages.QueryPage
 	currentModel    tea.Model
+	windowWidth     int
+	windowHeight    int
 }
 
 func initialModel() model {
 	ti := textinput.New()
-	ti.Placeholder = "TYPE"
 	ti.Focus()
+	ti.Placeholder = "the type of database(mysql, postgres)"
 	ti.CharLimit = 156
 	ti.Width = 50
+	ti.TextStyle.Background(lipgloss.Color("63"))
+	ti.TextStyle.Foreground(lipgloss.Color("63"))
+	ti.SetSuggestions([]string{"mysql", "postgres"})
+	ti.ShowSuggestions = true
+	ti.PromptStyle.Border(lipgloss.NormalBorder())
+	ti.TextStyle.BorderStyle(lipgloss.NormalBorder())
 
 	sti := textinput.New()
 	sti.Placeholder = "DB_URI"
@@ -130,7 +139,7 @@ func initialModel() model {
 		dataTable:       t,
 		tableRow:        tr,
 		tableColumn:     tc,
-		connectionPage: connectionPage,
+		connectionPage:  connectionPage,
 		queryPage:       queryPage,
 	}
 }
@@ -144,6 +153,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.windowWidth = msg.Width
+		m.windowHeight = msg.Height
+
 	case pages.Navigator:
 		log.Println("msg.To", msg.To)
 
@@ -177,13 +190,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	termstyle := lipgloss.NewStyle().Align(lipgloss.Center).BorderStyle(lipgloss.ThickBorder())
+
+	termstyle.Margin(1, 1, 1, 1)
+	termstyle.Width(m.windowWidth - 5)
+	termstyle.Height(m.windowHeight - 5)
+
 	if m.currentModel == nil {
 		return ""
 	}
 
-	return fmt.Sprintf(
-		"Enter the input:\n\n%s\n\n%s",
+	return termstyle.Render(fmt.Sprintf(
+		"Enter the input:\n\nwidth:%s height:%s\n\n%s\n\n%s",
+		strconv.Itoa(m.windowWidth),
+		strconv.Itoa(m.windowHeight),
 		m.currentModel.View(),
-		"(esc to quit)",
-	)
+		"(press ESC or CRL+C to quit)",
+	))
 }
