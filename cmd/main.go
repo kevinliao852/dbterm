@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -57,90 +56,21 @@ func main() {
 }
 
 type model struct {
-	textInput       textinput.Model
-	secondTextInput textinput.Model
-	dbInput         textinput.Model
-	dataTable       table.Model
-	err             error
-	num             int
-	tableRow        []table.Row
-	tableColumn     []table.Column
-	connectionPage  pages.ConnectionPage
-	queryPage       pages.QueryPage
-	currentModel    tea.Model
-	windowWidth     int
-	windowHeight    int
+	err            error
+	num            int
+	connectionPage pages.ConnectionPage
+	queryPage      pages.QueryPage
+	currentModel   tea.Model
+	windowWidth    int
+	windowHeight   int
 }
 
 func initialModel() model {
-	ti := textinput.New()
-	ti.Focus()
-	ti.Placeholder = "the type of database(mysql, postgres)"
-	ti.CharLimit = 156
-	ti.Width = 50
-	ti.TextStyle.Background(lipgloss.Color("63"))
-	ti.TextStyle.Foreground(lipgloss.Color("63"))
-	ti.SetSuggestions([]string{"mysql", "postgres"})
-	ti.ShowSuggestions = true
-	ti.PromptStyle.Border(lipgloss.NormalBorder())
-	ti.TextStyle.BorderStyle(lipgloss.NormalBorder())
-
-	sti := textinput.New()
-	sti.Placeholder = "DB_URI"
-	sti.Focus()
-	sti.CharLimit = 156
-	sti.Width = 50
-
-	dbi := textinput.New()
-	dbi.Placeholder = "SQL Query"
-	dbi.Focus()
-	dbi.CharLimit = 156
-	dbi.Width = 40
-
-	connectionPage := pages.ConnectionPage{
-		TextInput:       ti,
-		SecondTextInput: sti,
-	}
-
-	var tr []table.Row = []table.Row{}
-	var tc []table.Column = []table.Column{}
-
-	t := table.New(
-		table.WithColumns(tc),
-		table.WithRows(tr),
-		table.WithFocused(true),
-		table.WithHeight(7),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-	t.SetWidth(1000)
-
-	queryPage := pages.QueryPage{
-		DbInput:   dbi,
-		DataTable: t,
-	}
-
 	return model{
-		textInput:       ti,
-		secondTextInput: sti,
-		dbInput:         dbi,
-		err:             nil,
-		num:             0,
-		dataTable:       t,
-		tableRow:        tr,
-		tableColumn:     tc,
-		connectionPage:  connectionPage,
-		queryPage:       queryPage,
+		err:            nil,
+		num:            0,
+		connectionPage: pages.NewConnectionPage(),
+		queryPage:      pages.NewQueryPage(),
 	}
 }
 
@@ -190,11 +120,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	termstyle := lipgloss.NewStyle().Align(lipgloss.Center).BorderStyle(lipgloss.ThickBorder())
-
-	termstyle.Margin(1, 1, 1, 1)
-	termstyle.Width(m.windowWidth - 5)
-	termstyle.Height(m.windowHeight - 5)
 
 	if m.currentModel == nil {
 		return ""

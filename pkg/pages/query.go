@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kevinliao852/dbterm/pkg/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,6 +20,16 @@ type QueryPage struct {
 	queryStr   string
 }
 
+func NewQueryPage() QueryPage {
+	return QueryPage{
+		DbInput:    models.DBSQLQueryInput(),
+		DataTable:  models.DBSelectTable(),
+		selectData: "",
+		DB:         nil,
+		queryStr:   "",
+	}
+}
+
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.ThickBorder()).
 	BorderForeground(lipgloss.Color("240")).Width(120)
@@ -28,7 +39,7 @@ var _ Pager = &QueryPage{}
 var _ tea.Model = &QueryPage{}
 
 func (q *QueryPage) Init() tea.Cmd {
-	return q.DbInput.Focus()
+	return textinput.Blink
 }
 
 func (q *QueryPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

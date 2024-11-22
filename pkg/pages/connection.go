@@ -6,16 +6,24 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kevinliao852/dbterm/pkg/models"
 	log "github.com/sirupsen/logrus"
 )
 
 type ConnectionPage struct {
-	TextInput       textinput.Model
-	SecondTextInput textinput.Model
+	textInput       textinput.Model
+	secondTextInput textinput.Model
 	errorStr        string
 	driverType      string
 	db              *sql.DB
 	isConnected     bool
+}
+
+func NewConnectionPage() ConnectionPage {
+	return ConnectionPage{
+		textInput:       models.ConnectionTypeInput(),
+		secondTextInput: models.ConnectionURIInput(),
+	}
 }
 
 var _ Pager = &ConnectionPage{}
@@ -37,20 +45,20 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return q, tea.Quit
 			case tea.KeyEnter:
-				driverType := q.TextInput.Value()
-				dbUri := q.SecondTextInput.Value()
+				driverType := q.textInput.Value()
+				dbUri := q.secondTextInput.Value()
 
 				if !q.isValidDriverType(driverType) {
 					q.errorStr = "\nInvalid driver type.\nonly 'mysql' and 'postgres' are supported\n"
 					break
 				}
 				q.errorStr = ""
-				q.driverType = q.TextInput.Value()
+				q.driverType = q.textInput.Value()
 
 				if driverType != "" && dbUri != "" {
 					// connect to the database
 					var err error
-					q.db, err = connectDB(q.SecondTextInput.Value())
+					q.db, err = connectDB(q.secondTextInput.Value())
 
 					if err != nil {
 						q.errorStr = "\nError connecting to the database\n" + err.Error() + "\n"
@@ -80,9 +88,9 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if q.driverType == "" {
-		q.TextInput, cmd = q.TextInput.Update(msg)
+		q.textInput, cmd = q.textInput.Update(msg)
 	} else {
-		q.SecondTextInput, cmd = q.SecondTextInput.Update(msg)
+		q.secondTextInput, cmd = q.secondTextInput.Update(msg)
 	}
 
 	return q, cmd
@@ -92,15 +100,15 @@ func (q ConnectionPage) View() string {
 	baseBorder := lipgloss.NewStyle().BorderStyle(lipgloss.ThickBorder())
 
 	if q.driverType == "" {
-		q.TextInput.Placeholder = "Enter the driver type (mysql, postgres)"
-		q.TextInput.Focus()
-		return baseBorder.Render(q.TextInput.View() + q.errorStr)
+		q.textInput.Placeholder = "Enter the driver type (mysql, postgres)"
+		q.textInput.Focus()
+		return baseBorder.Render(q.textInput.View() + q.errorStr)
 	}
 
-	q.SecondTextInput.Placeholder = "Enter the database uri"
-	q.SecondTextInput.Focus()
+	q.secondTextInput.Placeholder = "Enter the database uri"
+	q.secondTextInput.Focus()
 
-	return baseBorder.Render(q.SecondTextInput.View() + q.errorStr)
+	return baseBorder.Render(q.secondTextInput.View() + q.errorStr)
 
 }
 
