@@ -200,11 +200,21 @@ func (m model) View() string {
 		return ""
 	}
 
+	return m.frame(m.currentModel.View())
+
+}
+
+func (m model) frame(inner string) string {
+	termstyle := lipgloss.NewStyle().Align(lipgloss.Center).BorderStyle(lipgloss.ThickBorder())
+	termstyle.Margin(1, 1, 1, 1)
+	termstyle.Width(m.windowWidth - 5)
+	termstyle.Height(m.windowHeight - 5)
+
 	return termstyle.Render(fmt.Sprintf(
 		"Enter the input:\n\nwidth:%s height:%s\n\n%s\n\n%s",
 		strconv.Itoa(m.windowWidth),
 		strconv.Itoa(m.windowHeight),
-		m.currentModel.View(),
+		inner,
 		"(press ESC or CRL+C to quit)",
 	))
 }
