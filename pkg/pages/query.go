@@ -3,6 +3,7 @@ package pages
 import (
 	"database/sql"
 	"fmt"
+	"math"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -116,13 +117,7 @@ func (q *QueryPage) readAndQuery() {
 
 	types, _ := rows.ColumnTypes()
 
-	for _, col := range types {
-		width := len(col.Name())
-		tableColumn = append(tableColumn, table.Column{
-			Title: col.Name(),
-			Width: width,
-		})
-	}
+	maxLength := 0
 
 	for rows.Next() {
 
@@ -131,8 +126,6 @@ func (q *QueryPage) readAndQuery() {
 		for range types {
 			row = append(row, new(interface{}))
 		}
-
-		log.Println("debug", types, len(types), row)
 
 		err := rows.Scan(row...)
 
@@ -146,19 +139,21 @@ func (q *QueryPage) readAndQuery() {
 		for _, fields := range row {
 			pField := fields.(*interface{})
 			strField := fmt.Sprintf("%s", *pField)
-
+			maxLength = int(math.Max(float64(maxLength), float64(len(strField))))
 			tableRow = append(tableRow, strField)
 		}
-
-		log.Println(tableRow)
 
 		tableRowList = append(tableRowList, tableRow)
 	}
 
-	log.Println(tableColumn)
-	log.Println(tableRowList)
+	for _, col := range types {
+		tableColumn = append(tableColumn, table.Column{
+			Title: col.Name(),
+			Width: maxLength,
+		})
+	}
 
-	// make sure to set culumn first!
+	// make sure to set column first!
 	if len(tableColumn) == 0 {
 		var c []table.Column
 		c = append(c, table.Column{Title: "Message", Width: 16})
