@@ -33,6 +33,7 @@ var _ tea.Model = &ConnectionPage{}
 var driverMap = map[string]string{
 	"mysql":    "mysql",
 	"postgres": "pgx",
+	"sqlite3": "sqlite3",
 }
 
 func (q ConnectionPage) Init() tea.Cmd {
