@@ -36,8 +36,6 @@ func (q ConnectionPage) Init() tea.Cmd {
 
 func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
-	log.Println("ConnectionPage Update")
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		{
