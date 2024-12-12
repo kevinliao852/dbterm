@@ -30,6 +30,11 @@ var _ Pager = &ConnectionPage{}
 
 var _ tea.Model = &ConnectionPage{}
 
+var driverMap = map[string]string{
+	"mysql":    "mysql",
+	"postgres": "pgx",
+}
+
 func (q ConnectionPage) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -46,7 +51,7 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				driverType := q.textInput.Value()
 				dbUri := q.secondTextInput.Value()
 
-				if !q.isValidDriverType(driverType) {
+				if !q.isValidDriverType(driverType, driverMap) {
 					q.errorStr = "\nInvalid driver type.\nonly 'mysql' and 'postgres' are supported\n"
 					break
 				}
@@ -55,8 +60,9 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if driverType != "" && dbUri != "" {
 					// connect to the database
+					driverName := driverMap[driverType]
 					var err error
-					q.db, err = connectDB(q.secondTextInput.Value())
+					q.db, err = connectDB(driverName, q.secondTextInput.Value())
 
 					if err != nil {
 						q.errorStr = "\nError connecting to the database\n" + err.Error() + "\n"
@@ -114,19 +120,16 @@ func (q ConnectionPage) getPageName() string {
 	return "connectionPage"
 }
 
-func (q ConnectionPage) isValidDriverType(s string) bool {
-	if s == "mysql" || s == "postgres" {
-		return true
-	}
-
-	return false
+func (q ConnectionPage) isValidDriverType(s string, driverMap map[string]string) bool {
+	_, exists := driverMap[s]
+	return exists
 }
 
-func connectDB(dbURI string) (*sql.DB, error) {
+func connectDB(driverName, dbURI string) (*sql.DB, error) {
 	log.Println("Connecting to the database...")
 
-	// Open a connection to the MySQL database
-	db, err := sql.Open("mysql", dbURI)
+	// Open a connection to the target database
+	db, err := sql.Open(driverName, dbURI)
 	if err != nil {
 		return nil, err
 	}
