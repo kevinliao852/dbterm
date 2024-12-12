@@ -6,3 +6,9 @@ clean: ## Clean the built binary
 
 build: ## Build the main binary
 	@go build -ldflags "-s -w" -o dbterm cmd/main.go
+
+install-gofumpt: ## Install gofumpt
+	@go install mvdan.cc/gofumpt@latest
+
+style: ## Format the codebase
+	@gofumpt -l -w .
