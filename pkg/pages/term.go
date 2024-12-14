@@ -2,6 +2,7 @@ package pages
 
 import (
 	"database/sql"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/go-sql-driver/mysql"
@@ -11,6 +12,7 @@ import (
 
 type Term struct {
 	connectionPage ConnectionPage
+	confirmPage    ConfirmPage
 	queryPage      QueryPage
 	currentModel   tea.Model
 	windowWidth    int
@@ -20,6 +22,7 @@ type Term struct {
 func NewTermModel() Term {
 	return Term{
 		connectionPage: NewConnectionPage(),
+		confirmPage:    NewConfirmPage(),
 		queryPage:      NewQueryPage(),
 		currentModel:   nil,
 		windowWidth:    0,
@@ -48,6 +51,16 @@ func (m Term) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ConnectionPageType:
 			m.currentModel, cmd = m.connectionPage.Update(msg)
 
+		case ConfirmPageType:
+			log.Println("confirm page")
+			if msg.Options != nil {
+				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {
+					m.confirmPage.DB = db
+				}
+			}
+
+			m.currentModel, cmd = m.confirmPage.Update(msg)
+
 		case QueryPageType:
 			log.Println(msg, "options")
 			if msg.Options != nil {
@@ -58,7 +71,6 @@ func (m Term) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.currentModel, cmd = m.queryPage.Update(msg)
 		}
-
 	default:
 		if m.currentModel == nil {
 			m.currentModel = m.connectionPage
