@@ -85,7 +85,7 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		(*options)["db"] = q.db
 
 		n := Navigator{
-			To:      QueryPageType,
+			To:      ConfirmPageType,
 			Options: options,
 		}
 
