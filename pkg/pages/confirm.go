@@ -24,7 +24,7 @@ var (
 type ConfirmPage struct {
 	list        list.Model
 	DB          *sql.DB
-	saveSession int
+	saveSession *int
 }
 
 type item string
@@ -76,7 +76,7 @@ func NewConfirmPage() ConfirmPage {
 	confirmPage := ConfirmPage{
 		list:        l,
 		DB:          nil,
-		saveSession: -1,
+		saveSession: nil,
 	}
 	return confirmPage
 }
@@ -87,6 +87,10 @@ func (c ConfirmPage) Init() tea.Cmd {
 	return nil
 }
 
+func intPtr(v int) *int {
+	return &v
+}
+
 func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -95,16 +99,16 @@ func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := c.list.SelectedItem().(item)
 			if ok {
 				if string(i) == "Yes" {
-					c.saveSession = 1
+					c.saveSession = intPtr(1)
 					log.Println("Save to config")
 				}
 				if string(i) == "No" {
-					c.saveSession = 0
+					c.saveSession = intPtr(0)
 					log.Println("Not save to config")
 				}
 			}
 
-			if c.saveSession != -1 {
+			if c.saveSession != nil {
 				options := &map[string]interface{}{}
 				log.Println(c.DB)
 				(*options)["db"] = c.DB
@@ -122,10 +126,10 @@ func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c ConfirmPage) View() string {
-	if c.saveSession == -1 {
+	if c.saveSession == nil {
 		return "\n" + c.list.View()
 	}
-	if c.saveSession == 0 {
+	if c.saveSession == intPtr(1) {
 		return fmt.Sprintln("Save this session")
 	}
 	return fmt.Sprintln("Dont save this session")
