@@ -21,6 +21,11 @@ var (
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
 
+const (
+	NotSaveSession int = iota
+	SaveSession
+)
+
 type ConfirmPage struct {
 	list        list.Model
 	DB          *sql.DB
@@ -99,11 +104,11 @@ func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := c.list.SelectedItem().(item)
 			if ok {
 				if string(i) == "Yes" {
-					c.saveSession = intPtr(1)
+					c.saveSession = intPtr(SaveSession)
 					log.Println("Save to config")
 				}
 				if string(i) == "No" {
-					c.saveSession = intPtr(0)
+					c.saveSession = intPtr(NotSaveSession)
 					log.Println("Not save to config")
 				}
 			}
@@ -129,7 +134,7 @@ func (c ConfirmPage) View() string {
 	if c.saveSession == nil {
 		return "\n" + c.list.View()
 	}
-	if c.saveSession == intPtr(1) {
+	if c.saveSession == intPtr(SaveSession) {
 		return fmt.Sprintln("Save this session")
 	}
 	return fmt.Sprintln("Dont save this session")
