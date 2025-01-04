@@ -3,10 +3,10 @@ package pages
 import tea "github.com/charmbracelet/bubbletea"
 
 type Navigator struct {
-	To      int
+	On      int
 	Options *map[string]interface{}
 }
 
-func (n *Navigator) NavigateTo() tea.Msg {
-	return Navigator{To: n.To, Options: n.Options}
+func (n *Navigator) NavigateOn() tea.Msg {
+	return Navigator{On: n.On, Options: n.Options}
 }

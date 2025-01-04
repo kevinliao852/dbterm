@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kevinliao852/dbterm/pkg/models"
-	log "github.com/sirupsen/logrus"
 )
 
 type ConnectionPage struct {
@@ -17,6 +16,8 @@ type ConnectionPage struct {
 	driverType      string
 	db              *sql.DB
 	isConnected     bool
+	windowWidth     int
+	windowHeight    int
 }
 
 func NewConnectionPage() ConnectionPage {
@@ -33,7 +34,7 @@ var _ tea.Model = &ConnectionPage{}
 var driverMap = map[string]string{
 	"mysql":    "mysql",
 	"postgres": "pgx",
-	"sqlite3": "sqlite3",
+	"sqlite3":  "sqlite3",
 }
 
 func (q ConnectionPage) Init() tea.Cmd {
@@ -43,17 +44,18 @@ func (q ConnectionPage) Init() tea.Cmd {
 func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		q.windowWidth = msg.Width
+		q.windowHeight = msg.Height
 	case tea.KeyMsg:
 		{
 			switch msg.Type {
-			case tea.KeyCtrlC, tea.KeyEsc:
-				return q, tea.Quit
 			case tea.KeyEnter:
 				driverType := q.textInput.Value()
 				dbUri := q.secondTextInput.Value()
 
 				if !q.isValidDriverType(driverType, driverMap) {
-					q.errorStr = "\nInvalid driver type.\nonly 'mysql' and 'postgres' are supported\n"
+					q.errorStr = "Invalid driver type.\nonly 'mysql' and 'postgres' are supported"
 					break
 				}
 				q.errorStr = ""
@@ -66,7 +68,7 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					q.db, err = connectDB(driverName, q.secondTextInput.Value())
 
 					if err != nil {
-						q.errorStr = "\nError connecting to the database\n" + err.Error() + "\n"
+						q.errorStr = "Error connecting to the database\n" + err.Error() + "\n"
 						break
 					}
 
@@ -85,11 +87,11 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		(*options)["db"] = q.db
 
 		n := Navigator{
-			To:      QueryPageType,
+			On:      ConnectionPageType,
 			Options: options,
 		}
 
-		return q, n.NavigateTo
+		return q, n.NavigateOn
 	}
 
 	if q.driverType == "" {
@@ -103,17 +105,29 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (q ConnectionPage) View() string {
 	baseBorder := lipgloss.NewStyle().BorderStyle(lipgloss.ThickBorder())
+	errStyle := lipgloss.NewStyle().Width(q.windowWidth - 50)
+	AlignLeft := lipgloss.NewStyle().Align(lipgloss.Left)
 
 	if q.driverType == "" {
+		q.textInput.Width = q.windowWidth - 50
 		q.textInput.Placeholder = "Enter the driver type (mysql, postgres)"
-		q.textInput.Focus()
-		return baseBorder.Render(q.textInput.View() + q.errorStr)
+
+		input := baseBorder.Render(lipgloss.JoinHorizontal(0.2, baseBorder.Render("Driver"), baseBorder.Render(q.textInput.View())))
+		width := lipgloss.Width(input)
+
+		errorOutput := baseBorder.Width(width - 2).Render(errStyle.Render(q.errorStr))
+
+		width = lipgloss.Width(errorOutput)
+
+		return AlignLeft.Render(lipgloss.JoinVertical(0.3, input), errorOutput)
 	}
 
+	q.secondTextInput.Width = q.windowWidth - 50
 	q.secondTextInput.Placeholder = "Enter the database uri"
 	q.secondTextInput.Focus()
 
-	return baseBorder.Render(q.secondTextInput.View() + q.errorStr)
+	input := lipgloss.JoinHorizontal(0.2, baseBorder.Render("URI"), baseBorder.Render(q.secondTextInput.View()))
+	return lipgloss.JoinVertical(0.3, input, baseBorder.Render(errStyle.Render(q.errorStr)))
 
 }
 
@@ -127,8 +141,6 @@ func (q ConnectionPage) isValidDriverType(s string, driverMap map[string]string)
 }
 
 func connectDB(driverName, dbURI string) (*sql.DB, error) {
-	log.Println("Connecting to the database...")
-
 	// Open a connection to the target database
 	db, err := sql.Open(driverName, dbURI)
 	if err != nil {

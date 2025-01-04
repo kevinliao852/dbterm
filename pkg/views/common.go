@@ -1,10 +1,14 @@
 package views
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	marginRight  = lipgloss.Right
+	marginLeft   = lipgloss.Left
+	marginTop    = lipgloss.Top
+	marginBottom = lipgloss.Bottom
 )
 
 type Terminal struct {
@@ -21,15 +25,10 @@ func NewTerminal(width, height int) Terminal {
 
 func TerminalFrame(innerStr string, m Terminal) string {
 	termstyle := lipgloss.NewStyle().Align(lipgloss.Center).BorderStyle(lipgloss.ThickBorder())
-	termstyle.Margin(1, 1, 1, 1)
+	termstyle.Margin(int(marginTop), int(marginRight), int(marginBottom), int(marginTop))
 	termstyle.Width(m.width - 5)
 	termstyle.Height(m.height - 5)
+	text := lipgloss.JoinVertical(0.5, termstyle.Render(innerStr), "press ESC or CRL+C to quit")
 
-	return termstyle.Render(fmt.Sprintf(
-		"Enter the input:\n\nwidth:%s height:%s\n\n%s\n\n%s",
-		strconv.Itoa(m.width),
-		strconv.Itoa(m.height),
-		innerStr,
-		"(press ESC or CRL+C to quit)",
-	))
+	return text
 }

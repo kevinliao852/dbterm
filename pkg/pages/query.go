@@ -10,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kevinliao852/dbterm/pkg/models"
-	log "github.com/sirupsen/logrus"
 )
 
 type QueryPage struct {
@@ -53,12 +52,7 @@ func (q *QueryPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return q, tea.Quit
 		case tea.KeyEnter:
-			log.Println("Enter pressed")
-
-			log.Println("DB:", q.DB, &q.DB)
-
 			if q.DB == nil {
-				log.Println("here")
 				break
 			}
 
