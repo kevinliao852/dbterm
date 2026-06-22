@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,16 +17,17 @@ func main() {
 	if len(os.Getenv("DEBUG")) > 0 {
 		tlog := logger.NewLoggerOption(log.New())
 		f, err := tea.LogToFileWith("debug.log", "DEBUG", tlog)
-		defer (func() {
-			err := f.Close()
-			if err != nil {
-				log.Error(err)
-			}
-		})()
-
 		if err != nil {
 			fmt.Println("fatal:", err)
+		} else {
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Error(err)
+				}
+			}()
 		}
+	} else {
+		log.SetOutput(io.Discard)
 	}
 
 	// start the program

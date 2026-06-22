@@ -2,13 +2,14 @@ package pages
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/kevinliao852/dbterm/pkg/models"
+	"github.com/kevinliao852/dbterm/pkg/views"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,6 +19,8 @@ type ConnectionPage struct {
 	errorStr        string
 	driverType      string
 	driverIndex     int
+	width           int
+	height          int
 	db              *sql.DB
 	isConnected     bool
 }
@@ -25,6 +28,7 @@ type ConnectionPage struct {
 type driverOption struct {
 	name     string
 	label    string
+	detail   string
 	template string
 }
 
@@ -32,16 +36,19 @@ var driverOptions = []driverOption{
 	{
 		name:     "mysql",
 		label:    "MySQL",
+		detail:   "Network database",
 		template: "root:password@tcp(localhost:3306)/database",
 	},
 	{
 		name:     "postgres",
 		label:    "PostgreSQL",
+		detail:   "Network database",
 		template: "postgres://user:password@localhost:5432/database?sslmode=disable",
 	},
 	{
 		name:     "sqlite",
 		label:    "SQLite",
+		detail:   "Local database file",
 		template: "./database.db",
 	},
 }
@@ -67,6 +74,13 @@ func (q ConnectionPage) Init() tea.Cmd {
 }
 
 func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		q.width = sizeMsg.Width
+		q.height = sizeMsg.Height
+		q.resize()
+		return q, nil
+	}
+
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -91,7 +105,7 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if keyMsg.Type == tea.KeyEnter {
 			dbURI := q.secondTextInput.Value()
 			if dbURI == "" {
-				q.errorStr = "\nPlease enter a database URI\n"
+				q.errorStr = "Please enter a database URI."
 				return q, nil
 			}
 
@@ -99,7 +113,7 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var err error
 			q.db, err = connectDB(driverMap[q.driverType], dbURI)
 			if err != nil {
-				q.errorStr = "\nError connecting to the database\n" + err.Error() + "\n"
+				q.errorStr = "Could not connect: " + err.Error()
 				return q, nil
 			}
 			q.isConnected = true
@@ -107,7 +121,10 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if q.isConnected {
-		options := &map[string]interface{}{"db": q.db}
+		options := &map[string]interface{}{
+			"db":         q.db,
+			"driverType": q.driverType,
+		}
 		n := Navigator{
 			To:      ConfirmPageType,
 			Options: options,
@@ -121,29 +138,49 @@ func (q ConnectionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (q ConnectionPage) View() string {
-	baseBorder := lipgloss.NewStyle().BorderStyle(lipgloss.ThickBorder())
-
 	if q.driverType == "" {
-		options := "Choose a database:\n\n"
+		rows := make([]string, 0, len(driverOptions))
 		for index, option := range driverOptions {
-			cursor := "  "
 			if index == q.driverIndex {
-				cursor = "> "
+				rows = append(rows, views.ActiveItemStyle.Render("● "+option.label)+
+					views.MutedStyle.Render("  "+option.detail))
+				continue
 			}
-			options += cursor + option.label + "\n"
+			rows = append(rows, views.InactiveItemStyle.Render("○ "+option.label)+
+				views.MutedStyle.Render("  "+option.detail))
 		}
-		options += "\n↑/↓ or j/k: select  •  1/2/3: quick select  •  enter: confirm"
-		return baseBorder.Render(options)
+
+		help := views.KeyStyle("↑/↓") + views.HelpStyle.Render(" select  ") +
+			views.KeyStyle("enter") + views.HelpStyle.Render(" confirm")
+		if q.contentWidth() < 55 {
+			help = views.KeyStyle("↑/↓") + views.HelpStyle.Render(" select  ") +
+				views.KeyStyle("enter") + views.HelpStyle.Render(" confirm")
+		} else {
+			help = views.KeyStyle("↑/↓") + views.HelpStyle.Render(" select  ") +
+				views.KeyStyle("1–3") + views.HelpStyle.Render(" quick select  ") +
+				views.KeyStyle("enter") + views.HelpStyle.Render(" confirm")
+		}
+
+		content := views.PageTitleStyle.Render("Choose a database") + "\n" +
+			views.MutedStyle.Render("Select the engine for this connection.") + "\n\n" +
+			strings.Join(rows, "\n\n") + "\n\n" + help
+
+		return views.CardStyle(q.contentWidth()).Render(content)
 	}
 
 	selectedDriver := driverOptions[q.driverIndex]
-	return baseBorder.Render(
-		"Connect to " + selectedDriver.label + "\n\n" +
-			"Edit the connection URI:\n" +
-			q.secondTextInput.View() +
-			"\n\nA template is filled in; replace its example values and press enter." +
-			q.errorStr,
-	)
+	content := views.PageTitleStyle.Render("Connect to "+selectedDriver.label) + "\n" +
+		views.MutedStyle.Render("Edit the generated connection URI.") + "\n\n" +
+		views.LabelStyle.Render("CONNECTION URI") + "\n" +
+		q.secondTextInput.View() + "\n\n" +
+		views.HelpStyle.Render("Replace the example values, then press ") +
+		views.KeyStyle("enter") + views.HelpStyle.Render(".")
+
+	if q.errorStr != "" {
+		content += "\n\n" + views.ErrorStyle.Render("! "+q.errorStr)
+	}
+
+	return views.CardStyle(q.contentWidth()).Render(content)
 }
 
 func (q ConnectionPage) getPageName() string {
@@ -162,6 +199,18 @@ func (q *ConnectionPage) selectDriver() {
 	q.secondTextInput.SetValue(option.template)
 	q.secondTextInput.CursorEnd()
 	q.secondTextInput.Focus()
+	q.resize()
+}
+
+func (q *ConnectionPage) resize() {
+	q.secondTextInput.Width = max(12, min(70, q.contentWidth()-4))
+}
+
+func (q ConnectionPage) contentWidth() int {
+	if q.width <= 0 {
+		return 76
+	}
+	return max(20, q.width-8)
 }
 
 func connectDB(driverName, dbURI string) (*sql.DB, error) {

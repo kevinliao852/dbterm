@@ -4,21 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/kevinliao852/dbterm/pkg/views"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	paginationStyle = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle       = views.HelpStyle.PaddingLeft(2).PaddingBottom(1)
 )
 
 const (
@@ -29,7 +24,10 @@ const (
 type ConfirmPage struct {
 	list        list.Model
 	DB          *sql.DB
+	driverType  string
 	saveSession *int
+	width       int
+	height      int
 }
 
 type item string
@@ -49,16 +47,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i)
-
-	fn := itemStyle.Render
 	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
+		fmt.Fprint(w, views.ActiveItemStyle.Render("● "+string(i)))
+		return
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, views.InactiveItemStyle.Render("○ "+string(i)))
 }
 
 func NewConfirmPage() ConfirmPage {
@@ -71,10 +65,11 @@ func NewConfirmPage() ConfirmPage {
 
 	l := list.New(items, itemDelegate{}, defaultWidth, defaultHeight)
 
-	l.Title = "Do you want to save this session?"
+	l.Title = "Save this connection?"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
-	l.Styles.Title = titleStyle
+	l.SetShowPagination(false)
+	l.Styles.Title = views.PageTitleStyle
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
@@ -97,6 +92,13 @@ func intPtr(v int) *int {
 }
 
 func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		c.width = sizeMsg.Width
+		c.height = sizeMsg.Height
+		c.resize()
+		return c, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -117,6 +119,7 @@ func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				options := &map[string]interface{}{}
 				log.Println(c.DB)
 				(*options)["db"] = c.DB
+				(*options)["driverType"] = c.driverType
 				n := Navigator{
 					To:      QueryPageType,
 					Options: options,
@@ -130,12 +133,28 @@ func (c ConfirmPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return c, cmd
 }
 
+func (c *ConfirmPage) resize() {
+	if c.width <= 0 || c.height <= 0 {
+		return
+	}
+	c.list.SetSize(max(14, c.contentWidth()-6), max(5, c.height-12))
+}
+
 func (c ConfirmPage) View() string {
 	if c.saveSession == nil {
-		return "\n" + c.list.View()
+		content := views.MutedStyle.Render("Keep these connection details for later.") + "\n\n" +
+			c.list.View()
+		return views.CardStyle(c.contentWidth()).Render(content)
 	}
 	if c.saveSession == intPtr(SaveSession) {
-		return fmt.Sprintln("Save this session")
+		return views.SuccessStyle.Render("✓ Connection selected for saving.")
 	}
-	return fmt.Sprintln("Dont save this session")
+	return views.MutedStyle.Render("Connection will not be saved.")
+}
+
+func (c ConfirmPage) contentWidth() int {
+	if c.width <= 0 {
+		return 48
+	}
+	return max(20, min(64, c.width-8))
 }

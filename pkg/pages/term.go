@@ -34,13 +34,17 @@ func (m Term) Init() tea.Cmd {
 }
 
 func (m Term) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	var cmd tea.Cmd
+
+	if m.currentModel == nil {
+		m.currentModel = m.connectionPage
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
 		m.windowHeight = msg.Height
+		m.currentModel, cmd = m.currentModel.Update(msg)
 
 	case Navigator:
 		log.Println("msg.To", msg.To)
@@ -48,13 +52,18 @@ func (m Term) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.To {
 
 		case ConnectionPageType:
+			m.connectionPage = resizeConnectionPage(m.connectionPage, m.windowSizeMsg())
 			m.currentModel, cmd = m.connectionPage.Update(msg)
 
 		case ConfirmPageType:
 			log.Println("confirm page")
+			m.confirmPage = resizeConfirmPage(m.confirmPage, m.windowSizeMsg())
 			if msg.Options != nil {
 				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {
 					m.confirmPage.DB = db
+				}
+				if driverType, ok := (*msg.Options)["driverType"].(string); ok {
+					m.confirmPage.driverType = driverType
 				}
 			}
 
@@ -62,19 +71,20 @@ func (m Term) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case QueryPageType:
 			log.Println(msg, "options")
+			m.queryPage = resizeQueryPage(m.queryPage, m.windowSizeMsg())
 			if msg.Options != nil {
 				if db, ok := (*msg.Options)["db"].(*sql.DB); ok {
 					m.queryPage.DB = db
+				}
+				if driverType, ok := (*msg.Options)["driverType"].(string); ok {
+					m.queryPage.driverType = driverType
 				}
 			}
 
 			m.currentModel, cmd = m.queryPage.Update(msg)
 		}
+		cmd = tea.Batch(cmd, tea.ClearScreen)
 	default:
-		if m.currentModel == nil {
-			m.currentModel = m.connectionPage
-		}
-
 		if _, ok := msg.(Navigator); !ok {
 			m.currentModel, cmd = m.currentModel.Update(msg)
 		}
@@ -91,4 +101,23 @@ func (m Term) View() string {
 	}
 
 	return views.TerminalFrame(view, views.NewTerminal(m.windowWidth, m.windowHeight))
+}
+
+func (m Term) windowSizeMsg() tea.WindowSizeMsg {
+	return tea.WindowSizeMsg{Width: m.windowWidth, Height: m.windowHeight}
+}
+
+func resizeConnectionPage(page ConnectionPage, msg tea.WindowSizeMsg) ConnectionPage {
+	model, _ := page.Update(msg)
+	return model.(ConnectionPage)
+}
+
+func resizeConfirmPage(page ConfirmPage, msg tea.WindowSizeMsg) ConfirmPage {
+	model, _ := page.Update(msg)
+	return model.(ConfirmPage)
+}
+
+func resizeQueryPage(page QueryPage, msg tea.WindowSizeMsg) QueryPage {
+	model, _ := page.Update(msg)
+	return *model.(*QueryPage)
 }
