@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/kevinliao852/dbterm/pkg/views"
 	log "github.com/sirupsen/logrus"
 )

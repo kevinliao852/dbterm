@@ -30,10 +30,43 @@ go get -u github.com/kevinliao852/dbterm
 make build
 ```
 
-### URI Example
+### Development
+
+Run the application from source with debug logging enabled:
+
+```
+make dev
+```
+
+Debug output is written to `debug.log`.
+
+### Connection Examples
+
+Select a database with the arrow keys or the `1`, `2`, and `3` shortcuts.
+DBTerm then fills in an editable connection URI template.
+
+MySQL:
 
 ```
 root:my-secret-pw@tcp(localhost:3306)/my_db
+```
+
+PostgreSQL:
+
+```
+postgres://user:password@localhost:5432/my_db
+```
+
+SQLite:
+
+```
+./database.db
+```
+
+For an in-memory SQLite database:
+
+```
+:memory:
 ```
 
 ### Clean Up
