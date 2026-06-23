@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/kevinliao852/dbterm/pkg/llm"
 )
 
@@ -53,6 +54,22 @@ func TestQueryPageResizesTable(t *testing.T) {
 	}
 }
 
+func TestQueryResultsExpandAndComposerStaysAtBottom(t *testing.T) {
+	page := NewQueryPage()
+	page.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+
+	if height := lipgloss.Height(page.DataTable.View()); height != 17 {
+		t.Fatalf("expected results to fill remaining space, got height %d", height)
+	}
+	if height := lipgloss.Height(page.View()); height != page.height-5 {
+		t.Fatalf(
+			"expected query page to fill terminal content height: got=%d want=%d",
+			height,
+			page.height-5,
+		)
+	}
+}
+
 func TestTermForwardsPaneResize(t *testing.T) {
 	term := NewTermModel()
 	model, _ := term.Update(tea.WindowSizeMsg{Width: 72, Height: 20})
@@ -82,6 +99,51 @@ func TestQueryComposerCtrlJAddsNewline(t *testing.T) {
 	}
 }
 
+func TestQueryComposerIsLargeAndScrollsVertically(t *testing.T) {
+	page := NewQueryPage()
+	page.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+
+	if page.DbInput.Height() != 8 {
+		t.Fatalf("expected tall query composer, got height %d", page.DbInput.Height())
+	}
+
+	page.DbInput.SetValue(strings.Join([]string{
+		"SELECT",
+		"  id,",
+		"  name,",
+		"  email,",
+		"  created_at",
+		"FROM users",
+		"WHERE active = true",
+		"ORDER BY created_at DESC",
+		"LIMIT 100",
+	}, "\n"))
+	lastLine := page.DbInput.Line()
+
+	page.Update(tea.KeyMsg{Type: tea.KeyUp})
+
+	if page.DbInput.Line() >= lastLine {
+		t.Fatalf(
+			"expected up arrow to move through scrollable query text: before=%d after=%d",
+			lastLine,
+			page.DbInput.Line(),
+		)
+	}
+}
+
+func TestQueryComposerPromptDoesNotLookLikeSecondCursor(t *testing.T) {
+	page := NewQueryPage()
+
+	if strings.Contains(page.DbInput.Prompt, "│") ||
+		strings.Contains(page.AIInput.Prompt, "│") {
+		t.Fatalf(
+			"composer prompt should not resemble a cursor: SQL=%q AI=%q",
+			page.DbInput.Prompt,
+			page.AIInput.Prompt,
+		)
+	}
+}
+
 func TestQueryComposerEnterSubmitsWithoutNewline(t *testing.T) {
 	page := NewQueryPage()
 	page.DbInput.SetValue("SELECT 1")
@@ -93,6 +155,30 @@ func TestQueryComposerEnterSubmitsWithoutNewline(t *testing.T) {
 	}
 	if page.selectData != "DB is not connected" {
 		t.Fatalf("expected disconnected status, got %q", page.selectData)
+	}
+}
+
+func TestQueryErrorRendersInsideResultPanel(t *testing.T) {
+	page := NewQueryPage()
+	page.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	page.selectData = "Error executing the query\nno such table: users"
+
+	result := page.renderResult(page.queryError())
+	workspace := page.renderSQLWorkspace()
+
+	if !strings.Contains(result, "Error executing the query") ||
+		!strings.Contains(result, "no such table: users") {
+		t.Fatalf("expected result panel to contain query error, got %q", result)
+	}
+	if strings.Count(workspace, "Error executing the query") != 1 {
+		t.Fatalf("expected query error to render once inside results, got %q", workspace)
+	}
+	if lipgloss.Height(result) < lipgloss.Height(page.DataTable.View()) {
+		t.Fatalf(
+			"expected error result to retain table height: result=%d table=%d",
+			lipgloss.Height(result),
+			lipgloss.Height(page.DataTable.View()),
+		)
 	}
 }
 

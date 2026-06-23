@@ -47,13 +47,13 @@ func DBNaturalLanguageInput() textarea.Model {
 func composer(placeholder string) textarea.Model {
 	dbi := textarea.New()
 	dbi.Placeholder = placeholder
-	dbi.Prompt = "│ "
+	dbi.Prompt = "  "
 	dbi.ShowLineNumbers = false
 	dbi.EndOfBufferCharacter = ' '
 	dbi.Focus()
 	dbi.CharLimit = 4000
 	dbi.SetWidth(60)
-	dbi.SetHeight(3)
+	dbi.SetHeight(4)
 	dbi.FocusedStyle.Base = views.BodyStyle
 	dbi.FocusedStyle.Prompt = views.InputPromptStyle
 	dbi.FocusedStyle.Text = views.InputTextStyle

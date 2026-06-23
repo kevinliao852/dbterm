@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	dbschema "github.com/kevinliao852/dbterm/pkg/db"
 	"github.com/kevinliao852/dbterm/pkg/llm"
 	"github.com/kevinliao852/dbterm/pkg/models"
@@ -166,52 +167,33 @@ func (q *QueryPage) View() string {
 
 func (q *QueryPage) renderSQLWorkspace() string {
 	composerHelp := views.KeyStyle("enter") + views.HelpStyle.Render(" run  ") +
-		views.KeyStyle("ctrl+j") + views.HelpStyle.Render(" newline")
+		views.KeyStyle("ctrl+j") + views.HelpStyle.Render(" newline  ") +
+		views.KeyStyle("↑/↓") + views.HelpStyle.Render(" scroll")
 	composer := q.DbInput.View() + "\n" + composerHelp
 	queryInput := views.ComposerStyle(q.tableWidth()).Render(composer)
-	resultTable := views.PanelStyle(q.tableWidth()).Render(q.DataTable.View())
+	resultTable := q.renderResult(q.queryError())
 
-	status := ""
-	if q.selectData != "" {
-		status = q.renderStatus() + "\n\n"
-	}
-
-	return views.LabelStyle.Render("RESULTS") + "\n" +
+	return q.renderResultLabel(q.selectData, q.queryError()) + "\n" +
 		resultTable + "\n\n" +
-		status +
 		views.LabelStyle.Render("COMPOSER") + "\n" +
 		queryInput
 }
 
 func (q *QueryPage) renderAIWorkspace() string {
 	composerHelp := views.KeyStyle("enter") + views.HelpStyle.Render(" generate  ") +
-		views.KeyStyle("ctrl+j") + views.HelpStyle.Render(" newline")
+		views.KeyStyle("ctrl+j") + views.HelpStyle.Render(" newline  ") +
+		views.KeyStyle("↑/↓") + views.HelpStyle.Render(" scroll")
 	if q.generatedSQL != "" {
 		composerHelp += views.HelpStyle.Render("  ") +
 			views.KeyStyle("ctrl+e") + views.HelpStyle.Render(" execute SQL")
 	}
 	composer := q.AIInput.View() + "\n" + composerHelp
 	queryInput := views.ComposerStyle(q.tableWidth()).Render(composer)
-	resultTable := views.PanelStyle(q.tableWidth()).Render(q.DataTable.View())
+	resultTable := q.renderResult(q.aiError())
 
-	preview := ""
-	if q.generatedSQL != "" {
-		preview = views.LabelStyle.Render("GENERATED SQL") + "\n" +
-			views.PanelStyle(q.tableWidth()).Render(
-				views.BodyStyle.Render(q.generatedSQL)+"\n\n"+
-					views.MutedStyle.Render(q.explanation),
-			) + "\n\n"
-	}
-
-	status := ""
-	if q.aiStatus != "" {
-		status = q.renderAIStatus() + "\n\n"
-	}
-
-	return preview +
-		views.LabelStyle.Render("RESULTS") + "\n" +
+	return q.renderAIPreview() +
+		q.renderResultLabel(q.aiStatus, q.aiError()) + "\n" +
 		resultTable + "\n\n" +
-		status +
 		views.LabelStyle.Render("QUESTION") + "\n" +
 		queryInput
 }
@@ -318,7 +300,7 @@ func (q *QueryPage) resize() {
 	q.AIInput.SetWidth(max(12, q.tableWidth()-4))
 	q.AIInput.SetHeight(q.composerHeight())
 	q.DataTable.SetWidth(max(12, q.tableWidth()-4))
-	q.DataTable.SetHeight(max(1, q.height-q.composerHeight()-q.verticalOverhead()))
+	q.DataTable.SetHeight(q.resultHeight())
 	q.resizeColumns()
 }
 
@@ -351,26 +333,89 @@ func (q QueryPage) tableWidth() int {
 }
 
 func (q QueryPage) composerHeight() int {
-	if q.height > 32 {
-		return 5
+	if q.height > 36 {
+		return 8
 	}
-	return 3
+	if q.height > 24 {
+		return 6
+	}
+	return 4
 }
 
-func (q QueryPage) verticalOverhead() int {
-	overhead := 23
-	if q.activeTab == aiTab && q.generatedSQL != "" {
-		overhead += 7
+func (q QueryPage) resultHeight() int {
+	// The terminal frame uses five rows for its border, title, and spacing.
+	// The query page uses ten more for tabs, labels, panel borders, and help.
+	height := q.height - q.composerHeight() - 15
+	if q.activeTab == aiTab {
+		height -= q.aiPreviewHeight()
 	}
-	return overhead
+	return max(1, height)
+}
+
+func (q QueryPage) renderAIPreview() string {
+	if q.generatedSQL == "" {
+		return ""
+	}
+	return views.LabelStyle.Render("GENERATED SQL") + "\n" +
+		views.PanelStyle(q.tableWidth()).Render(
+			views.BodyStyle.Render(q.generatedSQL)+"\n\n"+
+				views.MutedStyle.Render(q.explanation),
+		) + "\n\n"
+}
+
+func (q QueryPage) aiPreviewHeight() int {
+	preview := q.renderAIPreview()
+	if preview == "" {
+		return 0
+	}
+	return lipgloss.Height(strings.TrimSuffix(preview, "\n\n")) + 1
+}
+
+func (q QueryPage) renderResult(err string) string {
+	content := q.DataTable.View()
+	if err != "" {
+		content = lipgloss.NewStyle().
+			Height(lipgloss.Height(content)).
+			Render(views.ErrorStyle.Render("! " + err))
+	}
+	return views.PanelStyle(q.tableWidth()).Render(content)
+}
+
+func (q QueryPage) queryError() string {
+	if isErrorStatus(q.selectData) {
+		return q.selectData
+	}
+	return ""
+}
+
+func (q QueryPage) aiError() string {
+	if isErrorStatus(q.aiStatus) {
+		return q.aiStatus
+	}
+	return q.queryError()
+}
+
+func isErrorStatus(status string) bool {
+	return strings.HasPrefix(status, "Error") ||
+		strings.HasPrefix(status, "Please") ||
+		strings.HasPrefix(status, "DB is not")
+}
+
+func (q QueryPage) renderResultLabel(status, err string) string {
+	label := views.LabelStyle.Render("RESULTS")
+	if status == "" || err != "" {
+		return label
+	}
+	if q.activeTab == aiTab {
+		return label + "  " + q.renderAIStatus()
+	}
+	return label + "  " + q.renderStatus()
 }
 
 func (q QueryPage) renderStatus() string {
 	status := q.selectData
 	switch {
-	case strings.HasPrefix(status, "Error"),
-		strings.HasPrefix(status, "Please"),
-		strings.HasPrefix(status, "DB is not"):
+	case isErrorStatus(status):
 		return views.ErrorStyle.Render("! " + status)
 	case status == "Querying the database":
 		return views.MutedStyle.Render("… " + status)
