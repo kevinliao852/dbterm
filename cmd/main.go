@@ -2,33 +2,30 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/kevinliao852/dbterm/pkg/logger"
 	"github.com/kevinliao852/dbterm/pkg/pages"
+	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 
 	// add logger
-	if len(os.Getenv("DEBUG")) > 0 {
-		tlog := logger.NewLoggerOption(log.New())
-		f, err := tea.LogToFileWith("debug.log", "DEBUG", tlog)
-		defer (func() {
-			err := f.Close()
-			if err != nil {
-				log.Error(err)
-			}
-		})()
-
+	tlog := logger.NewLoggerOption(log.New())
+	f, err := tea.LogToFileWith("debug.log", "DEBUG", tlog)
+	defer (func() {
+		err := f.Close()
 		if err != nil {
-			fmt.Println("fatal:", err)
+			log.Error(err)
 		}
+	})()
+
+	if err != nil {
+		fmt.Println("fatal:", err)
 	}
 
 	// start the program

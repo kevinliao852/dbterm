@@ -33,7 +33,12 @@ make build
 ### URI Example
 
 ```
+# mysql
+
 root:my-secret-pw@tcp(localhost:3306)/my_db
+
+# postgres
+postgres://postgres:postgres@localhost:5432/demo
 ```
 
 ### Clean Up
