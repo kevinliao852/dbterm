@@ -2,8 +2,9 @@ package models
 
 import (
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kevinliao852/dbterm/pkg/views"
 )
 
 func DBSelectTable() table.Model {
@@ -13,32 +14,53 @@ func DBSelectTable() table.Model {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(views.BorderColor).
 		BorderBottom(true).
-		Bold(false)
+		Bold(true).
+		Foreground(views.PrimaryColor)
+	s.Cell = s.Cell.
+		Foreground(views.TextColor).
+		Padding(0, 1)
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
+		Foreground(views.AccentColor).
+		Bold(true)
 
 	t := table.New(
 		table.WithColumns(tc),
 		table.WithRows(tr),
 		table.WithFocused(true),
-		table.WithHeight(7),
+		table.WithHeight(5),
 	)
 	t.SetStyles(s)
-	t.SetWidth(1000)
 
 	return t
 }
 
-func DBSQLQueryInput() textinput.Model {
-	dbi := textinput.New()
-	dbi.Placeholder = "SQL Query"
+func DBSQLQueryInput() textarea.Model {
+	return composer("Write a SQL query…")
+}
+
+func DBNaturalLanguageInput() textarea.Model {
+	return composer("Ask a question about your data…")
+}
+
+func composer(placeholder string) textarea.Model {
+	dbi := textarea.New()
+	dbi.Placeholder = placeholder
+	dbi.Prompt = "  "
+	dbi.ShowLineNumbers = false
+	dbi.EndOfBufferCharacter = ' '
 	dbi.Focus()
-	dbi.CharLimit = 156
-	dbi.Width = 40
+	dbi.CharLimit = 4000
+	dbi.SetWidth(60)
+	dbi.SetHeight(4)
+	dbi.FocusedStyle.Base = views.BodyStyle
+	dbi.FocusedStyle.Prompt = views.InputPromptStyle
+	dbi.FocusedStyle.Text = views.InputTextStyle
+	dbi.FocusedStyle.Placeholder = views.InputPlaceholderStyle
+	dbi.FocusedStyle.CursorLine = views.BodyStyle
+	dbi.BlurredStyle = dbi.FocusedStyle
+	dbi.Cursor.Style = views.CursorStyle
 
 	return dbi
 }
